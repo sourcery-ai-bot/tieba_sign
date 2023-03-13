@@ -46,12 +46,12 @@ class Tieba(object):
 
     def save_cookie(self, user):
         cookie_dict = self.s.cookies.get_dict()
-        with open('.%s' % user, 'w') as f:
+        with open(f'.{user}', 'w') as f:
             json.dump(cookie_dict, f)
             f.close()
 
     def load_cookie(self, user):
-        with open('.%s' % user, 'r') as f:
+        with open(f'.{user}', 'r') as f:
             cookie_dict = json.loads(f.read())
             f.close()
         for k, v in cookie_dict.items():
@@ -73,8 +73,7 @@ class Tieba(object):
         rsp = r.text.replace('(','').replace(')','')
         rsp_json = json.loads(rsp)
         try:
-            channel_v = json.loads(rsp_json['channel_v'])
-            return channel_v
+            return json.loads(rsp_json['channel_v'])
         except:
             print('扫描超时')
 
@@ -111,8 +110,7 @@ class Tieba(object):
         img = Image.open('qrcode.png')
         barcodes = pyzbar.decode(img)
         for barcode in barcodes:
-            barcodeData = barcode.data.decode("utf-8")
-            return barcodeData
+            return barcode.data.decode("utf-8")
 
     def get_qr_code(self):
         tt = self.get_time_stamp()
@@ -139,8 +137,7 @@ class Tieba(object):
                 os.remove('./qrcode.png')
                 print(f'请使用已经登录了百度贴吧网页端的浏览器打开链接并按照提示完成登陆：{qrurl}')
                 break
-        channel_id = r.json()['sign']
-        return channel_id
+        return r.json()['sign']
 
     def qr_login(self, user):
         channel_id = self.get_qr_code()
@@ -165,15 +162,14 @@ class Tieba(object):
     def check_login(self):
         r = self.s.get(self.TBS_URL)
         rsp = r.json()
-        return True if rsp['is_login'] == 1 else False
+        return rsp['is_login'] == 1
 
     def calc_sign(self, str_dict):
         md5 = hashlib.md5()
-        md5.update((
-            ''.join(
-                '%s=%s' % (k, v)
-                for k, v in str_dict.items()
-            ) + self.MD5_KEY).encode('utf-8')
+        md5.update(
+            (
+                (''.join(f'{k}={v}' for k, v in str_dict.items()) + self.MD5_KEY)
+            ).encode('utf-8')
         )
         return md5.hexdigest().upper()
 
@@ -222,8 +218,7 @@ class Tieba(object):
             files = {'image_file': ('captcha.jpg', BytesIO(response.content), 'application')}
             r = requests.post(self.CAPTCHA_API, files=files)
             try:
-                predict_text = json.loads(r.text)["value"]
-                return predict_text
+                return json.loads(r.text)["value"]
             except:
                 continue
 
@@ -287,7 +282,7 @@ class Tieba(object):
         start_time = time.time()
         for user in self.users:
             print(f'当前登陆: {user}')
-            if os.path.exists('.%s' % user):
+            if os.path.exists(f'.{user}'):
                 self.load_cookie(user)
                 if self.check_login():
                     print('CookieLogin: True')
@@ -295,20 +290,15 @@ class Tieba(object):
                     self.ALL_TIEBA_LIST.extend(tiebas)
                     self.start(tiebas)
                 else:
-                    print('%sCookies失效...正在重新登录...' % user)
+                    print(f'{user}Cookies失效...正在重新登录...')
                     self.login(user)
             else:
                 self.login(user)
             self.tb.align = 'l'
             print(self.tb)
             self.tb.clear_rows()
-        else:
-            end_time = time.time()
-            print('总共签到{}个贴吧,耗时:{}秒'.format(
-                len(self.ALL_TIEBA_LIST),
-                int(end_time - start_time)
-                )
-            )
+        end_time = time.time()
+        print(f'总共签到{len(self.ALL_TIEBA_LIST)}个贴吧,耗时:{int(end_time - start_time)}秒')
  
 if __name__ == "__main__":
     user_lists = [''] # 贴吧用户名列表，例如 ['张三', '李四']
